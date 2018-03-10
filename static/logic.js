@@ -1,12 +1,32 @@
 // *** Leaflet JS map creation *** 
-// adapted from the leaflet JS quickstart doc, instantiate map at html #mapid with center on London and only a slight zoom. 
-var mymap = L.map('mapid').setView([51.505, -0.09], 4);
+// adapted from the leaflet JS quickstart doc
 
-// add the base tile layer (the world map) from mapbox. accessToken is my own. Then add it to mymap.
-L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+// save the base tile layer (the world map) from mapbox. accessToken is my own. Then add it to mymap.
+var satelliteLay = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
     id: 'mapbox.satellite',
     accessToken: 'pk.eyJ1Ijoia2V2aW54eTAwIiwiYSI6ImNqZWJrcDFyczBjZHkycm85bTBtdzNjcjcifQ.5h1SaoW7n6f9YA4mF_dZTA'
-}).addTo(mymap);
+});
+// map layer of street view
+var streetLay = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    id: 'mapbox.streets',
+    accessToken: 'pk.eyJ1Ijoia2V2aW54eTAwIiwiYSI6ImNqZWJrcDFyczBjZHkycm85bTBtdzNjcjcifQ.5h1SaoW7n6f9YA4mF_dZTA'
+});
+
+//instantiate map at html #mapid with center on London and only a slight zoom. 
+var mymap = L.map('mapid', {
+    center: [51.505, -0.09],
+    zoom: 4,
+    layers: satelliteLay // default map when first loads
+});
+
+// base maps layer object for the master control layer
+var baseMaps = {
+    "Satellite": satelliteLay,
+    "Streets": streetLay
+};
+
+// master control layer
+var controlLayers = L.control.layers(baseMaps).addTo(mymap);
 
 // api from earthquake.usgs.gov
     // all earthquakes from the past week
@@ -25,15 +45,15 @@ function createFeatures(Earthquakes_data) {
      * based on earthquake magnitude classes
      * found here: http://www.geo.mtu.edu/UPSeis/magnitude.html */
     function getRadius(d){
-        return d > 8  ? 42 :
-        d > 7  ? 36 :
-        d > 6  ? 30 :
+        return d > 8  ? 192:
+        d > 7  ? 96 :
+        d > 6  ? 48 :
         d > 5   ? 24 :
-        d > 4   ? 18 :
+        d > 4   ? 12 :
                 6;
     }
     function getColor(d) { // ranges from pale yellowish to dark reddish
-        return d > 8 ? '#BD0026' :
+        return d > 8 ? '#710016' :
             d > 7  ? '#E31A1C':
             d > 6  ? '#FC4E2A' :
             d > 5  ? '#FD8D3C' :
@@ -47,20 +67,32 @@ function createFeatures(Earthquakes_data) {
             color: "#000",
             weight: 1,
             opacity: 1,
-            fillOpacity: 0.9
+            fillOpacity: 0.8
         };
 
     } // end geojsonMarkerOptions()
 
+    /*** Binds popup on each circle feature.
+     * Used below in the L.geoJSON for Earthquake data */
     function onEachFeature(feature, layer) {
-        // if properties is not empty?
+        // if properties is not empty
         if (feature.properties) {
             layer.bindPopup(
                 "Event: " + feature.properties.title 
                 + "<hr>Time: " 
                 + getTime(feature.properties.time)
             );
-            function getTime(feature) {//function to get date from UTC time stamp 
+            
+            // popups on circle on hover and close when mouse moves out
+            layer.on("mouseover", function(event){
+                this.openPopup();
+            });
+            layer.on('mouseout', function (e) {
+                this.closePopup();
+            });
+
+            // function: Get readable date from UTC time stamp in the api
+            function getTime(feature) {
                 var date = new Date(feature);
                 // Day part of the timestamp
                 var getDate = date.getUTCDate();
@@ -89,20 +121,47 @@ function createFeatures(Earthquakes_data) {
                 var formattedTime = getMonth + " " + getDate + " - " 
                     + hours + ':' + minutes.substr(-2) + " UTC"; 
                 return formattedTime;
-            }
-        }
-    } //end onEachFeature()
+            } // end function getTime(feature)
+        } // end if (feature.properties)
+    } //End onEachFeature()
 
     // *** leaflet geoJSON to convert data into circles on the map w/ other features
-    L.geoJSON(Earthquakes_data, {
+    var quakePoints = 
+            L.geoJSON(Earthquakes_data, {
             pointToLayer: function (feature, latlng) {
                 return L.circleMarker(latlng);
             },
             style: geojsonMarkerOptions,
             onEachFeature: onEachFeature
         }).addTo(mymap); // end geoJSON
+        // add to master control layer
+        controlLayers.addOverlay(quakePoints, 'Earthquake data');
 
-    // *** Create legend
+    // *** Add fault lines to mymap 
+    var faultsURL = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json" 
+    d3.json(faultsURL, function(faultsData) {
+        drawFaults(faultsData.features);
+    });
+
+    function drawFaults(faultsData) {
+        var faultLayer = L.geoJSON(faultsData, {
+            pointToLayer: function (feature, latlng) {
+                return new L.polyline(latlng);
+            },
+        }).addTo(mymap);
+        controlLayers.addOverlay(faultLayer, 'Fault Lines');
+        // bring to front earthquake data points when page first loads
+        quakePoints.bringToFront();
+    }
+
+    /*** Always keep quakePoints in front
+     * add eventlistener for whenever layers are overlayed. 
+     * Keep Earthquake data at the front */
+    mymap.on("overlayadd", function (event) {
+        quakePoints.bringToFront();
+    });
+
+    // *** Create legend at bottom-right
     // adapted from http://leafletjs.com/examples/choropleth/
     var legend = L.control({position: 'bottomright'});
 
@@ -123,18 +182,9 @@ function createFeatures(Earthquakes_data) {
         return div;
     };
 
+
+    // adding legend to mymap
     legend.addTo(mymap);
 
 } //end createFeatures()
 
-
-// *** Add fault lines to mymap 
-var faultsURL = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json" 
-d3.json(faultsURL, function(faultsData) {
-    drawFaults(faultsData.features);
-});
-
-function drawFaults(faultsData) {
-    L.geoJSON(faultsData)
-        .addTo(mymap);
-}
