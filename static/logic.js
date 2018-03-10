@@ -3,12 +3,12 @@
 
 // save the base tile layer (the world map) from mapbox. accessToken is my own. Then add it to mymap.
 var satelliteLay = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
-    id: 'mapbox.satellite',
+    id: 'mapbox.streets-satellite',
     accessToken: 'pk.eyJ1Ijoia2V2aW54eTAwIiwiYSI6ImNqZWJrcDFyczBjZHkycm85bTBtdzNjcjcifQ.5h1SaoW7n6f9YA4mF_dZTA'
 });
 // map layer of street view
-var streetLay = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
-    id: 'mapbox.streets',
+var darkLay = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    id: 'mapbox.dark',
     accessToken: 'pk.eyJ1Ijoia2V2aW54eTAwIiwiYSI6ImNqZWJrcDFyczBjZHkycm85bTBtdzNjcjcifQ.5h1SaoW7n6f9YA4mF_dZTA'
 });
 
@@ -21,8 +21,8 @@ var mymap = L.map('mapid', {
 
 // base maps layer object for the master control layer
 var baseMaps = {
-    "Satellite": satelliteLay,
-    "Streets": streetLay
+    "Satellite Map": satelliteLay,
+    "Dark Map": darkLay
 };
 
 // master control layer
