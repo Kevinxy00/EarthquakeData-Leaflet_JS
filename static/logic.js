@@ -16,6 +16,8 @@ var darkLay = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?
 var mymap = L.map('mapid', {
     center: [51.505, -0.09],
     zoom: 4,
+    timeDimension: true,
+    timeDimensionControl: true,
     layers: satelliteLay // default map when first loads
 });
 
@@ -127,15 +129,23 @@ function createFeatures(Earthquakes_data) {
 
     // *** leaflet geoJSON to convert data into circles on the map w/ other features
     var quakePoints = 
-            L.geoJSON(Earthquakes_data, {
+        // add to time dimension control
+        L.geoJson(Earthquakes_data, {
             pointToLayer: function (feature, latlng) {
-                return L.circleMarker(latlng);
+                return L.circleMarker(latlng); // create circle for each coordinate
             },
             style: geojsonMarkerOptions,
-            onEachFeature: onEachFeature
-        }).addTo(mymap); // end geoJSON
-        // add to master control layer
-        controlLayers.addOverlay(quakePoints, 'Earthquake data');
+            onEachFeature: onEachFeature // to bind mouse-hover popups
+        }); // end geoJSON
+
+    /*** Time dimension layer for earthquake points, auto get dimensions***/
+    TimeDimLay = L.timeDimension.layer.geoJson(quakePoints, {
+        addlastPoint: true, // add point for earliest data
+        updateTimeDimension: true // use the time dimensions range for this geoJson layer 
+    }).addTo(mymap); 	
+
+    // add to master control layer
+    controlLayers.addOverlay(TimeDimLay, 'Earthquake Points');
 
     // *** Add fault lines to mymap 
     var faultsURL = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json" 
@@ -151,14 +161,14 @@ function createFeatures(Earthquakes_data) {
         }).addTo(mymap);
         controlLayers.addOverlay(faultLayer, 'Fault Lines');
         // bring to front earthquake data points when page first loads
-        quakePoints.bringToFront();
+        TimeDimLay.bringToFront();
     }
 
-    /*** Always keep quakePoints in front
+    /*** Always keep quakePoints time dimension layer in front
      * add eventlistener for whenever layers are overlayed. 
      * Keep Earthquake data at the front */
     mymap.on("overlayadd", function (event) {
-        quakePoints.bringToFront();
+        TimeDimLay.bringToFront();
     });
 
     // *** Create legend at bottom-right
