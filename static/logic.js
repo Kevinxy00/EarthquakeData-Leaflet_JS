@@ -30,7 +30,6 @@ function createFeatures(Earthquakes_data) {
         d > 6  ? 30 :
         d > 5   ? 24 :
         d > 4   ? 18 :
-        d > 3   ? 12 :
                 6;
     }
     function getColor(d) { // ranges from pale yellowish to dark reddish
@@ -38,8 +37,7 @@ function createFeatures(Earthquakes_data) {
             d > 7  ? '#E31A1C':
             d > 6  ? '#FC4E2A' :
             d > 5  ? '#FD8D3C' :
-            d > 4   ? '#FEB24C' :
-            d > 3   ? '#FFEDA0' :
+            d > 4   ? '#fec981' :
                         '#fff6cf';
     }
     function geojsonMarkerOptions(feature) {
@@ -126,4 +124,17 @@ function createFeatures(Earthquakes_data) {
     };
 
     legend.addTo(mymap);
+
 } //end createFeatures()
+
+
+// *** Add fault lines to mymap 
+var faultsURL = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json" 
+d3.json(faultsURL, function(faultsData) {
+    drawFaults(faultsData.features);
+});
+
+function drawFaults(faultsData) {
+    L.geoJSON(faultsData)
+        .addTo(mymap);
+}
